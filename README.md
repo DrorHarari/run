@@ -6,3 +6,34 @@ program:	(partial) name of program without .exe
 -l:			Just list matching names
 -#:			Force the use of the #'th program (as shown with -l)
 -w:			Use whole-word search
+
+Example:
+
+$ run *word mydoc.docx
+Running: C:\Program Files\Microsoft Office 15\root\office15\WINWORD.EXE:
+
+$ run -l *word
+1) CHOSEN: WINWORD.EXE [C:\Program Files\Microsoft Office 15\root\office15]
+2) WINWORD.EXE [C:\Program Files (x86)\Microsoft Office\Office15]
+3) WINWORD.EXE [C:\Windows\Installer\$PatchCache$\Managed\00004109110000000000000000F01FEC\14.0.4763]
+4) WINWORD.EXE [C:\Windows\Installer\$PatchCache$\Managed\00004109110000000000000000F01FEC\14.0.6029]
+5) WINWORD.EXE [C:\Windows\Installer\$PatchCache$\Managed\00005119110000000000000000F01FEC\15.0.4420]
+
+Author:
+Dror Harari
+
+Copyrights & Disclaimers:
+All the files named Everything.* where taken from VoidTools' Everything Search SDK
+The other files were created by me and are hereby placed in the public domain
+
+DISCLAIMER (Cover my A**)
+
+THIS SOFTWARE, 'RUN' AVAILABLE HEREBY IS PROVIDED "AS IS" AND ANY EXPRESSED OR IMPLIED 
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR, OR ANY 
+CONTRIBUTOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON 
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
