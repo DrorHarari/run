@@ -22,6 +22,9 @@ Example
     2) FREEWORD.EXE [C:\Program Files (x86)\Freeware Inc]
     3) CROSSWORD.EXE [C:\Program Files\Thoughtful Diversions]
 
+    $ run -3 *word level.txt
+    Running: C:\Program Files\Thoughtful Diversions\CROSSWORD.EXE:
+    
 Author
 ------
 Dror Harari
