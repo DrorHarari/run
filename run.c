@@ -14,6 +14,7 @@ static void help()
     fprintf(stderr, "\tprogram: (partial) name of program without .exe\n");
     fprintf(stderr, "\t-w: Use whole-word search\n");
     fprintf(stderr, "\t-l: Just list matching names\n");
+    fprintf(stderr, "\t-p: Pause after run\n");
 }
 
 static void print_error()
@@ -55,14 +56,34 @@ static void set_if_path(char *pattern, char *input)
     }
 }
 
+static int ends_with(const char *str, const char *suffix)
+{
+    int suffix_len = strlen(suffix);
+    int str_len = strlen(str);
+
+    return str_len >= suffix_len && strcmp(suffix, str + str_len - suffix_len) == 0;
+}
+
+static int skipped_file(const char *file_name, const char *path)
+{
+    return
+        ends_with(file_name, ".pf")     ||
+        ends_with(file_name, ".mui")     ||
+        ends_with(file_name, ".res")     ||
+        ends_with(file_name, ".manifest")     ||
+        ends_with(path, "\\Prefetch");        
+}
+
 int main(int argc, char *argv[], char *envv[])
 {
 	int i;
+    int status;
     char *exe_pattern;
     const char *exe_name;
     const char *exe_path;
     int is_list = FALSE;
     int is_whole_word = FALSE;
+    int is_pause = FALSE;
     int chosen_option = 1;
     int prm_no = 1;
     int n_results;
@@ -81,6 +102,10 @@ int main(int argc, char *argv[], char *envv[])
 
             case 'w':
                 is_whole_word = TRUE;
+                break;
+
+            case 'p':
+                is_pause = TRUE;
                 break;
 
             case '1':
@@ -144,14 +169,31 @@ int main(int argc, char *argv[], char *envv[])
         exit(3);
     }
 
-    if (is_list) {
+    if (is_list || chosen_option) {
+        int cur_option = 0;
 	    for (i = 0; i < n_results; i++)
 	    {
-		    printf("%d) %s%s [%s]\n", i+1, 
-                i + 1 == chosen_option ? "CHOSEN: " : "", 
-                Everything_GetResultFileName(i),Everything_GetResultPath(i));
+            if (skipped_file(Everything_GetResultFileName(i),Everything_GetResultPath(i))) {
+                continue;
+            }
+
+            cur_option++;
+
+            if (is_list) {
+		        printf("%d) %s%s [%s]\n", cur_option, 
+                    cur_option == chosen_option ? "CHOSEN: " : "", 
+                    Everything_GetResultFileName(i),Everything_GetResultPath(i));
+            } else {
+                if (cur_option == chosen_option) {
+                    chosen_option = i + 1;
+                    break;
+                }
+            }
 	    }
-	    return 0;
+
+        if (is_list) {
+            return 0;
+        }
     }
 
     exe_name = Everything_GetResultFileName(chosen_option - 1);
@@ -159,7 +201,13 @@ int main(int argc, char *argv[], char *envv[])
     sprintf(exe_pattern, "%s\\%s", exe_path, exe_name);
 
     fprintf(stderr, "Running: %s:\n", exe_pattern);
-    _spawnvpe(_P_WAIT , exe_pattern, argv + prm_no, envv);
-	return 0;
+    status = _spawnvpe(_P_WAIT , exe_pattern, argv + prm_no, envv);
+
+    if (is_pause) {
+        fprintf(stderr, "\nHit RETURN to continue...");
+        getchar();
+    }
+
+    return status;
 }
 

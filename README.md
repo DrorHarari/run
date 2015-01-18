@@ -7,9 +7,10 @@ Usage
 -----
     run [options] <program> <...program parameters...>
     program:	(Partial) name of program without .exe
-    -l:		Just list matching names
-    -#:		Force the use of the #'th program (as shown with -l)
-    -w:		Use whole-word search
+    -l		Just list matching names
+    -#		Force the use of the #'th program (as shown with -l)
+    -w		Use whole-word search
+    -p		Pause after run
 
 Example
 -------
@@ -28,6 +29,13 @@ Example
 Author
 ------
 Dror Harari
+
+Changes
+-------
+2015-01-18	Added the -p option
+			Filter out some file with unuseful suffixes (.pf, .res, .mui)
+			Filter out files from the windows\prefetch directory
+
 
 Copyrights & Disclaimers
 ------------------------
