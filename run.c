@@ -67,10 +67,13 @@ static int ends_with(const char *str, const char *suffix)
 static int skipped_file(const char *file_name, const char *path)
 {
     return
-        ends_with(file_name, ".pf")     ||
-        ends_with(file_name, ".mui")     ||
-        ends_with(file_name, ".res")     ||
-        ends_with(file_name, ".manifest")     ||
+        ends_with(file_name, ".pf")         ||
+        ends_with(file_name, ".mui")        ||
+        ends_with(file_name, ".res")        ||
+        ends_with(file_name, ".manifest")   ||
+        ends_with(file_name, ".config")     ||
+        strstr(path, "\\obj\\")             ||
+        strstr(path, "\\$Recycle.Bin\\")    ||
         ends_with(path, "\\Prefetch");        
 }
 
