@@ -41,13 +41,14 @@ Dror Harari
 
 Changes
 -------
- 2015-04-11	Added the -s option to save favorite the program location
- 			Added the -d option to delete saved favorite program location
- 			Added the -f option to list saved favorite program locations
- 			Bug fixes
- 2015-01-18	Added the -p option
- 			Filter out some file with unuseful suffixes (.pf, .res, .mui)
- 			Filter out files from the windows\prefetch directory
+* 2015-04-11
+  1. Added the -s option to save favorite the program location
+  2. Added the -d option to delete saved favorite program location
+  3. Added the -f option to list saved favorite program locations
+  4. Bug fixes
+* 2015-01-18	Added the -p option
+  1. Filter out some file with unuseful suffixes (.pf, .res, .mui)
+  2. Filter out files from the windows\prefetch directory
 
 
 Copyrights & Disclaimers
