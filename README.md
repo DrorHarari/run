@@ -9,6 +9,9 @@ Usage
     program:	(Partial) name of program without .exe
     -l		Just list matching names
     -#		Force the use of the #'th program (as shown with -l)
+    -s		With -# saves the #'th program as favorite (as shown with -l)
+    -d		Remove the favorite program specified
+    -f		List favorite programs
     -w		Use whole-word search
     -p		Pause after run
 
@@ -25,16 +28,26 @@ Example
 
     $ run -3 *word level.txt
     Running: C:\Program Files\Thoughtful Diversions\CROSSWORD.EXE:
+
+    $ run -3 -s *word level.txt
+    Saved favorite 'word' as: C:\Program Files\Thoughtful Diversions\CROSSWORD.EXE
     
+    $ run word level.txt
+    Running: C:\Program Files\Thoughtful Diversions\CROSSWORD.EXE:
+
 Author
 ------
 Dror Harari
 
 Changes
 -------
-2015-01-18	Added the -p option
-			Filter out some file with unuseful suffixes (.pf, .res, .mui)
-			Filter out files from the windows\prefetch directory
+ 2015-04-11	Added the -s option to save favorite the program location
+ 			Added the -d option to delete saved favorite program location
+ 			Added the -f option to list saved favorite program locations
+ 			Bug fixes
+ 2015-01-18	Added the -p option
+ 			Filter out some file with unuseful suffixes (.pf, .res, .mui)
+ 			Filter out files from the windows\prefetch directory
 
 
 Copyrights & Disclaimers

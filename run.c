@@ -3,10 +3,21 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
+#include <errno.h>
+#include <io.h>
+#include <limits.h>
 #include <process.h>
 
 #define  EVERYTHINGUSERAPI
 #include "Everything.h"
+
+struct Favorite
+{
+    char *name;
+    char *executable;
+    struct Favorite *next;
+};
+static struct Favorite *s_Favorites;
 
 static void help()
 {
@@ -14,24 +25,31 @@ static void help()
     fprintf(stderr, "\tprogram: (partial) name of program without .exe\n");
     fprintf(stderr, "\t-w: Use whole-word search\n");
     fprintf(stderr, "\t-l: Just list matching names\n");
+    fprintf(stderr, "\t-#: Run the #'th program as listed by -l\n");
+    fprintf(stderr, "\t-s: With -#, save the #'th program as listed by -l as the favorite for the given program\n");
+    fprintf(stderr, "\t-d: Remove the given program from the favorites list\n");
+    fprintf(stderr, "\t-f: List favorites\n");
     fprintf(stderr, "\t-p: Pause after run\n");
 }
 
 static void print_error()
 {
     int err =  Everything_GetLastError();
-    char *str = "Unknown error";
+    char err_buff[256] = {0}, *err_str = err_buff;
 
     switch (err) {
-        case EVERYTHING_ERROR_CREATETHREAD:     str = "EVERYTHING_ERROR_CREATETHREAD"; break;
-        case EVERYTHING_ERROR_REGISTERCLASSEX:  str = "EVERYTHING_ERROR_REGISTERCLASSEX"; break;
-        case EVERYTHING_ERROR_CREATEWINDOW:     str = "EVERYTHING_ERROR_CREATEWINDOW"; break;
-        case EVERYTHING_ERROR_IPC:              str = "EVERYTHING_ERROR_IPC"; break;
-        case EVERYTHING_ERROR_MEMORY:           str = "EVERYTHING_ERROR_MEMORY	"; break;
-        case EVERYTHING_ERROR_INVALIDCALL:      str = "EVERYTHING_ERROR_INVALIDCALL"; break;
+        case EVERYTHING_ERROR_CREATETHREAD:     err_str = "Everything error: CREATETHREAD"; break;
+        case EVERYTHING_ERROR_REGISTERCLASSEX:  err_str = "Everything error: REGISTERCLASSEX"; break;
+        case EVERYTHING_ERROR_CREATEWINDOW:     err_str = "Everything error: CREATEWINDOW"; break;
+        case EVERYTHING_ERROR_IPC:              err_str = "Everything error: IPC"; break;
+        case EVERYTHING_ERROR_MEMORY:           err_str = "Everything error: MEMORY	"; break;
+        case EVERYTHING_ERROR_INVALIDCALL:      err_str = "Everything error: INVALIDCALL"; break;
+        default:                                sprintf(err_buff, "Everything error: Unknown error code %d", err);
+
+
     }
 
-    fprintf(stderr, "%s", str);
+    fprintf(stderr, "%s", err_str);
 }
 
 static void reset_search(char *pattern)
@@ -64,6 +82,14 @@ static int ends_with(const char *str, const char *suffix)
     return str_len >= suffix_len && strcmp(suffix, str + str_len - suffix_len) == 0;
 }
 
+static int starts_with(const char *str, const char *prefix)
+{
+    int prefix_len = strlen(prefix);
+    int str_len = strlen(str);
+
+    return str_len >= prefix_len && strncmp(prefix, str, prefix_len) == 0;
+}
+
 static int skipped_file(const char *file_name, const char *path)
 {
     return
@@ -77,17 +103,230 @@ static int skipped_file(const char *file_name, const char *path)
         ends_with(path, "\\Prefetch");        
 }
 
+static char *get_favorites_path()
+{
+    static char favorites_filename[] = "run.fav";
+    static char module_file_buff[MAX_PATH+sizeof(favorites_filename)] = {0};
+    static char *favorites_path = NULL;
+    DWORD hr;
+    
+    if (!favorites_path) {
+        hr = GetModuleFileName(NULL, module_file_buff, sizeof(module_file_buff)-sizeof(favorites_filename));
+        if (GetLastError() == ERROR_SUCCESS) {
+            char *last_backslash = strrchr(module_file_buff, '\\');
+            if (last_backslash) {
+                strcpy(last_backslash+1, favorites_filename);
+                favorites_path = module_file_buff;
+            }
+        }
+    }
+
+    return favorites_path;
+}
+
+static void load_favorites()
+{
+    FILE *file;
+    char *favorites_filepath = get_favorites_path();
+
+    if (!favorites_filepath || _access(favorites_filepath, 0) != 0) {
+        return;
+    }
+
+    file = fopen(favorites_filepath, "r");
+    if (!file) {
+        fprintf(stderr, "Could not open favorites file '%s' for read - %s", favorites_filepath, strerror(errno));
+        return;
+    }
+    else {
+        char line_buff[2048+1];
+        char *line;
+        struct Favorite *last_favorite = NULL;
+
+        while ( (line = fgets(line_buff, sizeof(line_buff)-1, file)) ) {
+            char *space;
+            char *executable;
+            struct Favorite *favorite;
+
+            space = strchr(line, '\n');
+            if (space) {
+                *space = '\0';
+            }
+
+            space = strchr(line, ' ');
+            executable = space ? space+1 : "";
+            if (space) {
+                *space = '\0';
+            }
+            
+            favorite = (struct Favorite *)malloc(sizeof(struct Favorite));
+            favorite->name = (char *)malloc(strlen(line)+1);
+            strcpy(favorite->name, line);
+            favorite->executable = (char *)malloc(strlen(executable)+1);
+            strcpy(favorite->executable, executable);
+            favorite->next = NULL;
+
+            if (!s_Favorites) {
+                s_Favorites = last_favorite = favorite;
+            }
+            else {
+                last_favorite->next = favorite;
+                last_favorite = favorite;
+            }
+        }
+
+        fclose(file);
+    }
+}
+
+static char *lookup_favorite(char *name)
+{
+    struct Favorite *favorites = s_Favorites;
+
+    while (favorites) {
+        if (_stricmp(name, favorites->name) == 0) {
+            return favorites->executable;
+        }
+
+        favorites = favorites->next;
+    }
+
+    return NULL;
+}
+
+static char *list_favorites()
+{
+    struct Favorite *favorites = s_Favorites;
+
+    fprintf(stderr, "Run's favorites:\n");
+    while (favorites) {
+        fprintf(stderr, "%s ==> %s\n", favorites->name, favorites->executable);
+        favorites = favorites->next;
+    }
+
+    return NULL;
+}
+
+static char *save_favorite(char *name, char *executable)
+{
+    struct Favorite *favorites = s_Favorites;
+    int replaced = FALSE;
+    FILE *file;
+    char *favorites_filepath = get_favorites_path();
+
+    if (!favorites_filepath) {
+        fprintf(stderr, "Could not save favorite (cannot determine favorites file location)\n");
+        return name;
+    }
+
+    // Named is always saved without the wildcards (%,*)
+    {
+        char *p_name = name;
+        char *p_new_name, *new_name;
+
+        p_new_name = new_name = (char *)malloc(strlen(name)+1);
+        while (*p_name) {
+            switch (*p_name) {
+                case '%':
+                case '*':
+                    p_name++;
+                    continue;
+                default:
+                    *p_new_name++ = *p_name++;
+            }
+        }
+        *p_new_name++ = *p_name++;
+        name = new_name;
+    }
+
+    while (favorites) {
+        if (_stricmp(name, favorites->name) == 0) {
+            favorites->executable = (char *)malloc(strlen(executable)+1);
+            strcpy(favorites->executable, executable);
+            replaced = TRUE;
+            break;
+        }
+
+        favorites = favorites->next;
+    }
+
+    if (!replaced) {
+        struct Favorite *new_favorite = (struct Favorite *)malloc(sizeof(struct Favorite));
+        new_favorite->name = (char *)malloc(strlen(name)+1);
+        strcpy(new_favorite->name, name);
+        new_favorite->executable = (char *)malloc(strlen(executable)+1);
+        strcpy(new_favorite->executable, executable);
+        new_favorite->next = s_Favorites;
+        s_Favorites = new_favorite;
+    }
+
+    file = fopen(favorites_filepath, "w");
+    if (!file) {
+        fprintf(stderr, "Could not open favorites file '%s' for write - %s", favorites_filepath, strerror(errno));
+        return name;
+    }
+
+    favorites = s_Favorites;
+    while (favorites) {
+        fprintf(file, "%s %s\n", favorites->name, favorites->executable);
+        favorites = favorites->next;
+    }
+
+    fclose(file);
+
+    return name;
+}
+
+static void delete_favorite(char *name)
+{
+    struct Favorite *favorites = s_Favorites;
+    FILE *file;
+    char *favorites_filepath = get_favorites_path();
+
+    if (!favorites_filepath) {
+        fprintf(stderr, "Could not delete favorite (cannot determine favorites file location)\n");
+        return;
+    }
+
+    if (!lookup_favorite(name)) {
+        fprintf(stderr, "Could find favorite program '%s' to delete\n", name);
+        return;
+    }
+
+    file = fopen(favorites_filepath, "w");
+    if (!file) {
+        fprintf(stderr, "Could not open favorites file '%s' for write - %s", favorites_filepath, strerror(errno));
+        return;
+    }
+
+    favorites = s_Favorites;
+    while (favorites) {
+        if (_stricmp(name, favorites->name) == 0) {
+            fprintf(stderr, "Deleted favorite program '%s' (%s)\n", name, favorites->executable);
+        } else {
+            fprintf(file, "%s %s\n", favorites->name, favorites->executable);
+        }
+
+        favorites = favorites->next;
+    }
+
+    fclose(file);
+}
+
 int main(int argc, char *argv[], char *envv[])
 {
 	int i;
     int status;
     char *exe_pattern;
+    char *favorite_exe;
     const char *exe_name;
     const char *exe_path;
     int is_list = FALSE;
     int is_whole_word = FALSE;
     int is_pause = FALSE;
-    int chosen_option = 1;
+    int is_save = FALSE;
+    int is_delete = FALSE;
+    int chosen_option = 0;
     int prm_no = 1;
     int n_results;
     int ok;
@@ -96,6 +335,8 @@ int main(int argc, char *argv[], char *envv[])
         help();
         exit(1);
     }
+
+    load_favorites();
 
     while (prm_no < argc && argv[prm_no][0] == '-') {
         switch (argv[prm_no][1]) {
@@ -111,6 +352,14 @@ int main(int argc, char *argv[], char *envv[])
                 is_pause = TRUE;
                 break;
 
+            case 's':
+                is_save = TRUE;
+                break;
+
+            case 'd':
+                is_delete = TRUE;
+                break;
+
             case '1':
             case '2':
             case '3':
@@ -123,6 +372,10 @@ int main(int argc, char *argv[], char *envv[])
                 chosen_option = atoi(&argv[prm_no][1]);
                 break;
 
+            case 'f':
+                list_favorites();
+                exit(0);
+
             default:
                 fprintf(stderr, "Unrecognized option '%s'\n\n", argv[prm_no]);
                 help();
@@ -134,77 +387,122 @@ int main(int argc, char *argv[], char *envv[])
 
     exe_pattern = (char *)malloc(strlen(argv[1])+1024);
 
-    // First try: just with .exe
-    set_if_path(exe_pattern, argv[prm_no]);
-    strcat(exe_pattern, ".exe");
-    reset_search(exe_pattern);
-    Everything_SetMatchWholeWord(TRUE);
 
-	ok = Everything_Query(TRUE);
+    if (!argv[prm_no] || !*argv[prm_no]) {
+        fprintf(stderr, "Missing program to %s\n", is_delete ? "delete" : "run");
+        help();
+        exit(2);
+    } else if (is_delete) {
+        delete_favorite(argv[prm_no]);
+        exit(0);
+    } else if (is_save && chosen_option == 0) {
+        fprintf(stderr, "Cannot save a favorite program without selecting one\n");
+        help();
+        exit(2);
+    }
 
-    // No results? Relax
-    if (ok && Everything_GetNumResults() == 0) {
+    favorite_exe = lookup_favorite(argv[prm_no]);
+    if (favorite_exe && !(is_list || chosen_option != 0)) {
+        exe_pattern = favorite_exe;
+    } else {
+        if (chosen_option == 0) {
+            chosen_option = 1;
+        }
+
+        // First try: just with .exe
         set_if_path(exe_pattern, argv[prm_no]);
-        strcat(exe_pattern, "*.exe");
+        strcat(exe_pattern, ".exe");
         reset_search(exe_pattern);
         Everything_SetMatchWholeWord(TRUE);
 
 	    ok = Everything_Query(TRUE);
 
-        if (ok && Everything_GetNumResults() == 0 && !is_whole_word) {
+        // No results? Relax
+        if (ok && (Everything_GetNumResults() == 0 || !starts_with(Everything_GetResultFileName(0), argv[prm_no]))) {
             set_if_path(exe_pattern, argv[prm_no]);
             strcat(exe_pattern, "*.exe");
             reset_search(exe_pattern);
-            Everything_SetMatchWholeWord(FALSE);
+            Everything_SetMatchWholeWord(TRUE);
 
 	        ok = Everything_Query(TRUE);
-        }
-    }
 
-    if (!ok) {
-        print_error();
-        exit(5);
-    }
+            if (ok && Everything_GetNumResults() == 0 && !is_whole_word) {
+                set_if_path(exe_pattern, argv[prm_no]);
+                strcat(exe_pattern, "*.exe");
+                reset_search(exe_pattern);
+                Everything_SetMatchWholeWord(FALSE);
 
-    n_results = Everything_GetNumResults();
-    if (!n_results) {
-        fprintf(stderr, "%s not found\n", exe_pattern);
-        exit(3);
-    }
-
-    if (is_list || chosen_option) {
-        int cur_option = 0;
-	    for (i = 0; i < n_results; i++)
-	    {
-            if (skipped_file(Everything_GetResultFileName(i),Everything_GetResultPath(i))) {
-                continue;
+	            ok = Everything_Query(TRUE);
             }
+        }
 
-            cur_option++;
+        if (!ok) {
+            print_error();
+            exit(5);
+        }
+
+        n_results = Everything_GetNumResults();
+        if (!n_results) {
+            fprintf(stderr, "%s not found\n", exe_pattern);
+            exit(3);
+        }
+
+        if (is_list || chosen_option) {
+            int cur_option = 0;
+	        for (i = 0; i < n_results; i++)
+	        {
+                if (skipped_file(Everything_GetResultFileName(i),Everything_GetResultPath(i))) {
+                    continue;
+                }
+
+                cur_option++;
+
+                exe_name = Everything_GetResultFileName(i);
+                exe_path = Everything_GetResultPath(i);
+                sprintf(exe_pattern, "%s\\%s", exe_path, exe_name);
+
+                if (is_list) {
+                    int is_default = favorite_exe && _stricmp(favorite_exe, exe_pattern) == 0;
+
+		            printf("%d) %s%s [%s]%s\n", cur_option, 
+                        cur_option == chosen_option ? "CHOSEN: " : "", 
+                        Everything_GetResultFileName(i),Everything_GetResultPath(i),
+                        is_default ? " (default)" : "");
+                } else {
+                    if (cur_option == chosen_option) {
+                        chosen_option = i + 1;
+                        break;
+                    }
+                }
+	        }
 
             if (is_list) {
-		        printf("%d) %s%s [%s]\n", cur_option, 
-                    cur_option == chosen_option ? "CHOSEN: " : "", 
-                    Everything_GetResultFileName(i),Everything_GetResultPath(i));
-            } else {
-                if (cur_option == chosen_option) {
-                    chosen_option = i + 1;
-                    break;
-                }
+                return 0;
             }
-	    }
+        }
 
-        if (is_list) {
-            return 0;
+        exe_name = Everything_GetResultFileName(chosen_option - 1);
+        exe_path = Everything_GetResultPath(chosen_option - 1);
+        if (exe_name && exe_pattern) {
+            sprintf(exe_pattern, "%s\\%s", exe_path, exe_name);
+        } else {
+            *exe_pattern = '\0';
         }
     }
 
-    exe_name = Everything_GetResultFileName(chosen_option - 1);
-    exe_path = Everything_GetResultPath(chosen_option - 1);
-    sprintf(exe_pattern, "%s\\%s", exe_path, exe_name);
-
-    fprintf(stderr, "Running: %s:\n", exe_pattern);
-    status = _spawnvpe(_P_WAIT , exe_pattern, argv + prm_no, envv);
+    if (is_save) {
+        if (*exe_pattern) {
+            char *new_name = save_favorite(argv[prm_no], exe_pattern);
+            fprintf(stderr, "Saved favorite '%s' as: %s\n", new_name, exe_pattern);
+            status = 0;
+        } else {
+            fprintf(stderr, "Favorite number %d is not valid\n", chosen_option);
+            status = 1;
+        }
+    } else {
+        fprintf(stderr, "Running: %s:\n", exe_pattern);
+        status = _spawnvpe(_P_WAIT , exe_pattern, argv + prm_no, envv);
+    }
 
     if (is_pause) {
         fprintf(stderr, "\nHit RETURN to continue...");
@@ -213,4 +511,3 @@ int main(int argc, char *argv[], char *envv[])
 
     return status;
 }
-
