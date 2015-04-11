@@ -1,7 +1,9 @@
 Runner for Windows
 ==================
 
-This program lets a Windows user easily run programs wherever they are on the disk. The program requires a local installation of the awesome VoidTools program Everything Search - that program is available for free download at http://www.voidtools.com/download.php
+This program (RUN) lets a Windows user easily run programs wherever they are on the disk. The program requires a local installation of the awesome VoidTools program Everything Search - that program is available for free download at http://www.voidtools.com/download.php
+
+For those of you who occasionally need to use the command line or who need to run program specifying command line options, there is a common annoyance that in many cases, the program is not on the system path so we need to open a command box, locate the program, change directory to where it is (or add it to the path) and only then we can run it. RUN eliminates this annoyance with EverythingSearch's magic.
 
 Usage
 -----
