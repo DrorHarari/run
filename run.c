@@ -1,3 +1,6 @@
+//TODO: GPE - c:\Dev\achead\prod\bin>run *pad++ acx.log
+//Running: C:\Program Files (x86)\Notepad++\notepad++.exe:.
+
 // Run.cpp : Defines the entry point for the console application.
 //
 
@@ -41,7 +44,7 @@ static void print_error()
         case EVERYTHING_ERROR_CREATETHREAD:     err_str = "Everything error: CREATETHREAD"; break;
         case EVERYTHING_ERROR_REGISTERCLASSEX:  err_str = "Everything error: REGISTERCLASSEX"; break;
         case EVERYTHING_ERROR_CREATEWINDOW:     err_str = "Everything error: CREATEWINDOW"; break;
-        case EVERYTHING_ERROR_IPC:              err_str = "Everything error: IPC"; break;
+        case EVERYTHING_ERROR_IPC:              err_str = "Everything error: Is EverythingSearch running? (IPC)"; break;
         case EVERYTHING_ERROR_MEMORY:           err_str = "Everything error: MEMORY	"; break;
         case EVERYTHING_ERROR_INVALIDCALL:      err_str = "Everything error: INVALIDCALL"; break;
         default:                                sprintf(err_buff, "Everything error: Unknown error code %d", err);
@@ -501,6 +504,14 @@ int main(int argc, char *argv[], char *envv[])
         }
     } else {
         fprintf(stderr, "Running: %s:\n", exe_pattern);
+
+		// Make sure empty parameters do not vanish by replacing them with explicit quotes
+		for (i = prm_no; argv[i]; i++) {
+			if (argv[i][0] == '\0') {
+				argv[i] = "\"\"";
+			}
+		}
+
         status = _spawnvpe(_P_WAIT , exe_pattern, argv + prm_no, envv);
     }
 

@@ -37,12 +37,22 @@ Example
     $ run word level.txt
     Running: C:\Program Files\Thoughtful Diversions\CROSSWORD.EXE:
 
+Notes
+-----
+1) If everything.exe is not run as an administrator then RUN may not be able to communicate with it from a command box running as administrator. Running everything.exe as an administrator resolve this issue but care should be taken to understand any security risk associated with running everything.exe as an administrator.
+	
 Author
 ------
 Dror Harari
 
 Changes
 -------
+* 2017-11-05 V4
+  1. Empty parameter on the command line (given as "") were previously removed. 
+     Fixed - now if "" is specified in the Run command line, it is passed to the
+     program that is run.
+  2. Make the message given when Everything Search is not running more meaningful.
+  3. Switch to building with Visual Studio 2010.
 * 2015-04-11 V3
   1. Added the -s option to save favorite the program location
   2. Added the -d option to delete saved favorite program location
