@@ -37,9 +37,11 @@ Example
     $ run word level.txt
     Running: C:\Program Files\Thoughtful Diversions\CROSSWORD.EXE:
 
-Notes
------
-1) If everything.exe is not run as an administrator then RUN may not be able to communicate with it from a command box running as administrator. Running everything.exe as an administrator resolve this issue but care should be taken to understand any security risk associated with running everything.exe as an administrator.
+Building
+--------
+1. Make sure CMake is installed (e.g. "choco install cmake")
+2. Run build.bat
+
 	
 Author
 ------
@@ -47,6 +49,9 @@ Dror Harari
 
 Changes
 -------
+* 2022-01-29 V5
+  1. Switch to Everything 1.4 SDK
+  2. Switch to CMake build (tested with Visual Studio 2019)
 * 2017-11-05 V4
   1. Empty parameter on the command line (given as "") were previously removed. 
      Fixed - now if "" is specified in the Run command line, it is passed to the
