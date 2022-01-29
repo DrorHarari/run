@@ -424,7 +424,8 @@ int main(int argc, char *argv[], char *envv[])
         // No results? Relax
         if (ok && (Everything_GetNumResults() == 0 || !starts_with(Everything_GetResultFileName(0), argv[prm_no]))) {
             set_pattern_if_path(exe_pattern, sizeof(exe_pattern) - sizeof("*.exe"), argv[prm_no]);
-            strcat(exe_pattern, "*.exe");
+			if (!ends_with(exe_pattern, ".exe"))
+				strcat(exe_pattern, "*.exe");
             reset_search(exe_pattern);
             Everything_SetMatchWholeWord(TRUE);
 
@@ -432,7 +433,8 @@ int main(int argc, char *argv[], char *envv[])
 
             if (ok && Everything_GetNumResults() == 0 && !is_whole_word) {
                 set_pattern_if_path(exe_pattern, sizeof(exe_pattern) - sizeof("*.exe"), argv[prm_no]);
-                strcat(exe_pattern, "*.exe");
+				if (!ends_with(exe_pattern, ".exe"))
+					strcat(exe_pattern, "*.exe");
                 reset_search(exe_pattern);
                 Everything_SetMatchWholeWord(FALSE);
 
