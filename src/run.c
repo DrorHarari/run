@@ -96,13 +96,15 @@ static int starts_with(const char *str, const char *prefix)
 static int skipped_file(const char *file_name, const char *path)
 {
     return
-        ends_with(file_name, ".pf")         ||
-        ends_with(file_name, ".mui")        ||
-        ends_with(file_name, ".res")        ||
-        ends_with(file_name, ".manifest")   ||
-        ends_with(file_name, ".config")     ||
-        strstr(path, "\\obj\\")             ||
-        strstr(path, "\\$Recycle.Bin\\")    ||
+        ends_with(file_name, ".pf")         	||
+        ends_with(file_name, ".mui")        	||
+        ends_with(file_name, ".res")        	||
+        ends_with(file_name, ".manifest")   	||
+        ends_with(file_name, ".config")     	||
+        strstr(path, "\\obj\\")             	||
+        strstr(path, "Windows\\servicing\\")	||
+        strstr(path, "Windows\\WinSxS\\")		||
+        strstr(path, "\\$Recycle.Bin\\")    	||
         ends_with(path, "\\Prefetch");        
 }
 
@@ -411,7 +413,9 @@ int main(int argc, char *argv[], char *envv[])
 
         // First try: just with .exe
         set_pattern_if_path(exe_pattern, sizeof(exe_pattern) - sizeof(".exe"), argv[prm_no]);
-        strcat(exe_pattern, ".exe");
+		if (!ends_with(exe_pattern, ".exe"))
+			strcat(exe_pattern, ".exe");
+
         reset_search(exe_pattern);
         Everything_SetMatchWholeWord(TRUE);
 
