@@ -54,9 +54,11 @@ Dror Harari
 
 Changes
 -------
-* 2022-06-25 V6
+* 2022-06-25 V7
   1. Change option -p from 'pause-after-run' to 'print-path-to-standard-output'
   2, Make option -k to be 'pause-after-run' (breaking change - sorry)
+* 2022-01-29 V6
+  1. Add action to check for vulnerabilities with Code-QL
 * 2022-01-29 V5
   1. Switch to Everything 1.4 SDK
   2. Switch to CMake build (tested with Visual Studio 2019)
