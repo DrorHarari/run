@@ -9,13 +9,14 @@ Usage
 -----
     run [options] <program> <...program parameters...>
     program:	(Partial) name of program without .exe
-    -l		Just list matching names
     -#		Force the use of the #'th program (as shown with -l)
-    -s		With -# saves the #'th program as favorite (as shown with -l)
     -d		Remove the favorite program specified
     -f		List favorite programs
+    -k		Pause after run
+    -l		Just list matching names
+    -p		Print matching program path to the standard output (without running it)
+    -s		With -#, save the #'th program as listed by -l as the favorite for the given program
     -w		Use whole-word search
-    -p		Pause after run
 
 Example
 -------
@@ -37,6 +38,10 @@ Example
     $ run word level.txt
     Running: C:\Program Files\Thoughtful Diversions\CROSSWORD.EXE:
 
+    $ FOR /F %i IN ('Run.exe -p -2 note') DO set NOTE=%i
+    $ echo %NOTE%
+    C:\Windows\notepad.exe
+
 Building
 --------
 1. Make sure CMake is installed (e.g. "choco install cmake")
@@ -49,6 +54,9 @@ Dror Harari
 
 Changes
 -------
+* 2022-06-25 V6
+  1. Change option -p from 'pause-after-run' to 'print-path-to-standard-output'
+  2, Make option -k to be 'pause-after-run' (breaking change - sorry)
 * 2022-01-29 V5
   1. Switch to Everything 1.4 SDK
   2. Switch to CMake build (tested with Visual Studio 2019)

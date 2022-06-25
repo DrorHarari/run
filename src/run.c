@@ -44,19 +44,20 @@ static void help()
 {
     fprintf(stderr, "Usage: run [options] <program> <...program parameters...>\n");
     fprintf(stderr, "\tprogram: (partial) name of program without .exe\n");
-    fprintf(stderr, "\t-w: Use whole-word search\n");
-    fprintf(stderr, "\t-l: Just list matching names\n");
     fprintf(stderr, "\t-#: Run the #'th program as listed by -l\n");
-    fprintf(stderr, "\t-s: With -#, save the #'th program as listed by -l as the favorite for the given program\n");
     fprintf(stderr, "\t-d: Remove the given program from the favorites list\n");
     fprintf(stderr, "\t-f: List favorites\n");
-    fprintf(stderr, "\t-p: Pause after run\n");
+    fprintf(stderr, "\t-k: Pause after run\n");
+    fprintf(stderr, "\t-l: Just list matching names\n");
+    fprintf(stderr, "\t-p: Print matching program path to the standard output (without running it)\n");
+    fprintf(stderr, "\t-s: With -#, save the #'th program as listed by -l as the favorite for the given program\n");
+    fprintf(stderr, "\t-w: Use whole-word search\n");
 }
 
 static void print_error()
 {
-    int err =  Everything_GetLastError();
-    char err_buff[256] = {0}, *err_str = err_buff;
+    int err = Everything_GetLastError();
+    char err_buff[256] = { 0 }, *err_str = err_buff;
 
     switch (err) {
         case EVERYTHING_ERROR_CREATETHREAD:     err_str = "Everything error: CREATETHREAD"; break;
@@ -66,8 +67,6 @@ static void print_error()
         case EVERYTHING_ERROR_MEMORY:           err_str = "Everything error: MEMORY	"; break;
         case EVERYTHING_ERROR_INVALIDCALL:      err_str = "Everything error: INVALIDCALL"; break;
         default:                                sprintf(err_buff, "Everything error: Unknown error code %d", err);
-
-
     }
 
     fprintf(stderr, "%s", err_str);
@@ -77,7 +76,7 @@ static void reset_search(char *pattern)
 {
     Everything_Reset();
     Everything_SetMax(200);
-	Everything_SetSearch(pattern);
+    Everything_SetSearch(pattern);
 }
 
 // Turn "c:\location\prog.exe" into "path:c:\location prog.exe" for Everything
@@ -85,14 +84,14 @@ static void set_pattern_if_path(char *pattern, int pattern_size, char *input)
 {
     char *path = strrchr(input, '\\');
 
-	if (path) {
-		sprintf_s(pattern, pattern_size, "path:%s", input);
-		pattern[strlen("path:") + path - input] = ' '; // Last \ turns into space (for AND)
-	}
-	else {
+    if (path) {
+        sprintf_s(pattern, pattern_size, "path:%s", input);
+        pattern[strlen("path:") + path - input] = ' '; // Last \ turns into space (for AND)
+    }
+    else {
         strcpy_s(pattern, pattern_size, input);
-		return;
-	}
+        return;
+    }
 }
 
 static int ends_with(const char *str, const char *suffix)
@@ -114,31 +113,31 @@ static int starts_with(const char *str, const char *prefix)
 static int skipped_file(const char *file_name, const char *path)
 {
     return
-        ends_with(file_name, ".pf")         	||
-        ends_with(file_name, ".mui")        	||
-        ends_with(file_name, ".res")        	||
-        ends_with(file_name, ".manifest")   	||
-        ends_with(file_name, ".config")     	||
-        strstr(path, "\\obj\\")             	||
-        strstr(path, "Windows\\servicing\\")	||
-        strstr(path, "Windows\\WinSxS\\")		||
-        strstr(path, "\\$Recycle.Bin\\")    	||
-        ends_with(path, "\\Prefetch");        
+        ends_with(file_name, ".pf")             ||
+        ends_with(file_name, ".mui")            ||
+        ends_with(file_name, ".res")            ||
+        ends_with(file_name, ".manifest")       ||
+        ends_with(file_name, ".config")         ||
+        strstr(path, "\\obj\\")                 ||
+        strstr(path, "Windows\\servicing\\")    ||
+        strstr(path, "Windows\\WinSxS\\")       ||
+        strstr(path, "\\$Recycle.Bin\\")        ||
+        ends_with(path, "\\Prefetch");
 }
 
 static char *get_favorites_path()
 {
     static char favorites_filename[] = "run.fav";
-    static char module_file_buff[MAX_PATH+sizeof(favorites_filename)] = {0};
+    static char module_file_buff[MAX_PATH + sizeof(favorites_filename)] = { 0 };
     static char *favorites_path = NULL;
     DWORD hr;
-    
+
     if (!favorites_path) {
-        hr = GetModuleFileName(NULL, module_file_buff, sizeof(module_file_buff)-sizeof(favorites_filename));
+        hr = GetModuleFileName(NULL, module_file_buff, sizeof(module_file_buff) - sizeof(favorites_filename));
         if (GetLastError() == ERROR_SUCCESS) {
             char *last_backslash = strrchr(module_file_buff, '\\');
             if (last_backslash) {
-                strcpy(last_backslash+1, favorites_filename);
+                strcpy(last_backslash + 1, favorites_filename);
                 favorites_path = module_file_buff;
             }
         }
@@ -149,7 +148,7 @@ static char *get_favorites_path()
 
 static void load_favorites()
 {
-    FILE *file;
+    FILE* file;
     char *favorites_filepath = get_favorites_path();
 
     if (!favorites_filepath || _access(favorites_filepath, 0) != 0) {
@@ -162,11 +161,11 @@ static void load_favorites()
         return;
     }
     else {
-        char line_buff[2048+1];
+        char line_buff[2048 + 1];
         char *line;
         struct Favorite *last_favorite = NULL;
 
-        while ( (line = fgets(line_buff, sizeof(line_buff)-1, file)) ) {
+        while ((line = fgets(line_buff, sizeof(line_buff) - 1, file))) {
             char *space;
             char *executable;
             struct Favorite *favorite;
@@ -177,15 +176,15 @@ static void load_favorites()
             }
 
             space = strchr(line, ' ');
-            executable = space ? space+1 : "";
+            executable = space ? space + 1 : "";
             if (space) {
                 *space = '\0';
             }
-            
+
             favorite = (struct Favorite *)malloc(sizeof(struct Favorite));
-            favorite->name = (char *)malloc(strlen(line)+1);
+            favorite->name = (char *)malloc(strlen(line) + 1);
             strcpy(favorite->name, line);
-            favorite->executable = (char *)malloc(strlen(executable)+1);
+            favorite->executable = (char *)malloc(strlen(executable) + 1);
             strcpy(favorite->executable, executable);
             favorite->next = NULL;
 
@@ -234,7 +233,7 @@ static char *save_favorite(char *name, char *executable)
 {
     struct Favorite *favorites = s_Favorites;
     int replaced = FALSE;
-    FILE *file;
+    FILE* file;
     char *favorites_filepath = get_favorites_path();
 
     if (!favorites_filepath) {
@@ -245,17 +244,17 @@ static char *save_favorite(char *name, char *executable)
     // Named is always saved without the wildcards (%,*)
     {
         char *p_name = name;
-        char *p_new_name, *new_name;
+        char *p_new_name, * new_name;
 
-        p_new_name = new_name = (char *)malloc(strlen(name)+1);
+        p_new_name = new_name = (char *)malloc(strlen(name) + 1);
         while (*p_name) {
             switch (*p_name) {
-                case '%':
-                case '*':
-                    p_name++;
-                    continue;
-                default:
-                    *p_new_name++ = *p_name++;
+            case '%':
+            case '*':
+                p_name++;
+                continue;
+            default:
+                *p_new_name++ = *p_name++;
             }
         }
         *p_new_name++ = *p_name++;
@@ -264,7 +263,7 @@ static char *save_favorite(char *name, char *executable)
 
     while (favorites) {
         if (_stricmp(name, favorites->name) == 0) {
-            favorites->executable = (char *)malloc(strlen(executable)+1);
+            favorites->executable = (char *)malloc(strlen(executable) + 1);
             strcpy(favorites->executable, executable);
             replaced = TRUE;
             break;
@@ -275,9 +274,9 @@ static char *save_favorite(char *name, char *executable)
 
     if (!replaced) {
         struct Favorite *new_favorite = (struct Favorite *)malloc(sizeof(struct Favorite));
-        new_favorite->name = (char *)malloc(strlen(name)+1);
+        new_favorite->name = (char *)malloc(strlen(name) + 1);
         strcpy(new_favorite->name, name);
-        new_favorite->executable = (char *)malloc(strlen(executable)+1);
+        new_favorite->executable = (char *)malloc(strlen(executable) + 1);
         strcpy(new_favorite->executable, executable);
         new_favorite->next = s_Favorites;
         s_Favorites = new_favorite;
@@ -303,7 +302,7 @@ static char *save_favorite(char *name, char *executable)
 static void delete_favorite(char *name)
 {
     struct Favorite *favorites = s_Favorites;
-    FILE *file;
+    FILE* file;
     char *favorites_filepath = get_favorites_path();
 
     if (!favorites_filepath) {
@@ -326,7 +325,8 @@ static void delete_favorite(char *name)
     while (favorites) {
         if (_stricmp(name, favorites->name) == 0) {
             fprintf(stderr, "Deleted favorite program '%s' (%s)\n", name, favorites->executable);
-        } else {
+        }
+        else {
             fprintf(file, "%s %s\n", favorites->name, favorites->executable);
         }
 
@@ -338,7 +338,7 @@ static void delete_favorite(char *name)
 
 int main(int argc, char *argv[], char *envv[])
 {
-	int i;
+    int i;
     intptr_t status;
     char exe_pattern[4096];
     char *favorite_exe;
@@ -347,6 +347,7 @@ int main(int argc, char *argv[], char *envv[])
     int is_list = FALSE;
     int is_whole_word = FALSE;
     int is_pause = FALSE;
+    int is_path_only = FALSE;
     int is_save = FALSE;
     int is_delete = FALSE;
     int chosen_option = 0;
@@ -363,59 +364,65 @@ int main(int argc, char *argv[], char *envv[])
 
     while (prm_no < argc && argv[prm_no][0] == '-') {
         switch (argv[prm_no][1]) {
-            case 'l':
-                is_list = TRUE;
-                break;
+        case 'l':
+            is_list = TRUE;
+            break;
 
-            case 'w':
-                is_whole_word = TRUE;
-                break;
+        case 'w':
+            is_whole_word = TRUE;
+            break;
 
-            case 'p':
-                is_pause = TRUE;
-                break;
+        case 'k':
+            is_pause = TRUE;
+            break;
 
-            case 's':
-                is_save = TRUE;
-                break;
+        case 'p':
+            is_path_only = TRUE;
+            break;
 
-            case 'd':
-                is_delete = TRUE;
-                break;
+        case 's':
+            is_save = TRUE;
+            break;
 
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-                chosen_option = atoi(&argv[prm_no][1]);
-                break;
+        case 'd':
+            is_delete = TRUE;
+            break;
 
-            case 'f':
-                list_favorites();
-                exit(0);
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+            chosen_option = atoi(&argv[prm_no][1]);
+            break;
 
-            default:
-                fprintf(stderr, "Unrecognized option '%s'\n\n", argv[prm_no]);
-                help();
-                exit(2);
+        case 'f':
+            list_favorites();
+            exit(0);
+
+        default:
+            fprintf(stderr, "Unrecognized option '%s'\n\n", argv[prm_no]);
+            help();
+            exit(2);
         }
 
         prm_no++;
-    } 
+    }
 
     if (!argv[prm_no] || !*argv[prm_no]) {
         fprintf(stderr, "Missing program to %s\n", is_delete ? "delete" : "run");
         help();
         exit(2);
-    } else if (is_delete) {
+    }
+    else if (is_delete) {
         delete_favorite(argv[prm_no]);
         exit(0);
-    } else if (is_save && chosen_option == 0) {
+    }
+    else if (is_save && chosen_option == 0) {
         fprintf(stderr, "Cannot save a favorite program without selecting one\n");
         help();
         exit(2);
@@ -424,39 +431,40 @@ int main(int argc, char *argv[], char *envv[])
     favorite_exe = lookup_favorite(argv[prm_no]);
     if (favorite_exe && !(is_list || chosen_option != 0)) {
         strcpy_s(exe_pattern, sizeof(exe_pattern), favorite_exe);
-    } else {
+    }
+    else {
         if (chosen_option == 0) {
             chosen_option = 1;
         }
 
         // First try: just with .exe
         set_pattern_if_path(exe_pattern, sizeof(exe_pattern) - sizeof(".exe"), argv[prm_no]);
-		if (!ends_with(exe_pattern, ".exe"))
-			strcat(exe_pattern, ".exe");
+        if (!ends_with(exe_pattern, ".exe"))
+            strcat(exe_pattern, ".exe");
 
         reset_search(exe_pattern);
         Everything_SetMatchWholeWord(TRUE);
 
-	    ok = Everything_Query(TRUE);
+        ok = Everything_Query(TRUE);
 
         // No results? Relax
         if (ok && (Everything_GetNumResults() == 0 || !starts_with(Everything_GetResultFileName(0), argv[prm_no]))) {
             set_pattern_if_path(exe_pattern, sizeof(exe_pattern) - sizeof("*.exe"), argv[prm_no]);
-			if (!ends_with(exe_pattern, ".exe"))
-				strcat(exe_pattern, "*.exe");
+            if (!ends_with(exe_pattern, ".exe"))
+                strcat(exe_pattern, "*.exe");
             reset_search(exe_pattern);
             Everything_SetMatchWholeWord(TRUE);
 
-	        ok = Everything_Query(TRUE);
+            ok = Everything_Query(TRUE);
 
             if (ok && Everything_GetNumResults() == 0 && !is_whole_word) {
                 set_pattern_if_path(exe_pattern, sizeof(exe_pattern) - sizeof("*.exe"), argv[prm_no]);
-				if (!ends_with(exe_pattern, ".exe"))
-					strcat(exe_pattern, "*.exe");
+                if (!ends_with(exe_pattern, ".exe"))
+                    strcat(exe_pattern, "*.exe");
                 reset_search(exe_pattern);
                 Everything_SetMatchWholeWord(FALSE);
 
-	            ok = Everything_Query(TRUE);
+                ok = Everything_Query(TRUE);
             }
         }
 
@@ -473,9 +481,9 @@ int main(int argc, char *argv[], char *envv[])
 
         if (is_list || chosen_option) {
             int cur_option = 0;
-	        for (i = 0; i < n_results; i++)
-	        {
-                if (skipped_file(Everything_GetResultFileName(i),Everything_GetResultPath(i))) {
+            for (i = 0; i < n_results; i++)
+            {
+                if (skipped_file(Everything_GetResultFileName(i), Everything_GetResultPath(i))) {
                     continue;
                 }
 
@@ -488,17 +496,18 @@ int main(int argc, char *argv[], char *envv[])
                 if (is_list) {
                     int is_default = favorite_exe && _stricmp(favorite_exe, exe_pattern) == 0;
 
-		            printf("%d) %s%s [%s]%s\n", cur_option, 
-                        cur_option == chosen_option ? "CHOSEN: " : "", 
-                        Everything_GetResultFileName(i),Everything_GetResultPath(i),
+                    printf("%d) %s%s [%s]%s\n", cur_option,
+                        cur_option == chosen_option ? "CHOSEN: " : "",
+                        Everything_GetResultFileName(i), Everything_GetResultPath(i),
                         is_default ? " (default)" : "");
-                } else {
+                }
+                else {
                     if (cur_option == chosen_option) {
                         chosen_option = i + 1;
                         break;
                     }
                 }
-	        }
+            }
 
             if (is_list) {
                 return 0;
@@ -509,7 +518,8 @@ int main(int argc, char *argv[], char *envv[])
         exe_path = Everything_GetResultPath(chosen_option - 1);
         if (exe_name && exe_pattern) {
             sprintf(exe_pattern, "%s\\%s", exe_path, exe_name);
-        } else {
+        }
+        else {
             *exe_pattern = '\0';
         }
     }
@@ -519,21 +529,26 @@ int main(int argc, char *argv[], char *envv[])
             char *new_name = save_favorite(argv[prm_no], exe_pattern);
             fprintf(stderr, "Saved favorite '%s' as: %s\n", new_name, exe_pattern);
             status = 0;
-        } else {
+        }
+        else {
             fprintf(stderr, "Favorite number %d is not valid\n", chosen_option);
             status = 1;
         }
-    } else {
+    }
+    else if (is_path_only) {
+        fprintf(stdout, "%s", exe_pattern);
+    }
+    else {
         fprintf(stderr, "Running: %s:\n", exe_pattern);
 
-		// Make sure empty parameters do not vanish by replacing them with explicit quotes
-		for (i = prm_no; argv[i]; i++) {
-			if (argv[i][0] == '\0') {
-				argv[i] = "\"\"";
-			}
-		}
+        // Make sure empty parameters do not vanish by replacing them with explicit quotes
+        for (i = prm_no; argv[i]; i++) {
+            if (argv[i][0] == '\0') {
+                argv[i] = "\"\"";
+            }
+        }
 
-        status = _spawnvpe(_P_WAIT , exe_pattern, argv + prm_no, envv);
+        status = _spawnvpe(_P_WAIT, exe_pattern, argv + prm_no, envv);
     }
 
     if (is_pause) {
